@@ -109,6 +109,7 @@ td input[type=number] { width: 84px; }
         <label>Cut speed (mm/min)<input type="number" id="m-cs" step="10" min="1"></label>
         <label>Cut power (%)<input type="number" id="m-cp" step="1" min="1" max="100"></label>
         <label>Cut passes<input type="number" id="m-pass" step="1" min="1" max="20"></label>
+        <label>Start Z step (mm)<input type="number" id="m-cz" step="0.5" min="0" max="5"></label>
         <label>Air assist<select id="m-air"><option value="1">On</option><option value="0">Off</option></select></label>
         <label>Line speed / power<input type="text" id="m-line" placeholder="6000 / 12"></label>
         <label>Fill speed / power<input type="text" id="m-fill" placeholder="18000 / 20"></label>
@@ -133,8 +134,8 @@ td input[type=number] { width: 84px; }
     </div>
     <div class="msgs" id="msgs" style="margin-top:10px"></div>
     <div class="tbl"><table>
-      <thead><tr><th>Order</th><th>Colour</th><th>Shapes</th><th>Mode</th><th>Speed mm/min</th><th>Power %</th><th>Passes</th><th>Layer</th></tr></thead>
-      <tbody id="layers"><tr><td colspan="8" class="empty">Load an SVG to see its colours here. Each one becomes a Studio layer.</td></tr></tbody>
+      <thead><tr><th>Order</th><th>Colour</th><th>Shapes</th><th>Mode</th><th>Speed mm/min</th><th>Power %</th><th>Passes</th><th>Start Z mm</th><th>Layer</th></tr></thead>
+      <tbody id="layers"><tr><td colspan="9" class="empty">Load an SVG to see its colours here. Each one becomes a Studio layer.</td></tr></tbody>
     </table></div>
     <div class="actions">
       <label style="min-width:220px;flex:1">File name<input type="text" id="outname" placeholder="design-walnut-3mm"></label>
@@ -153,14 +154,14 @@ let toastT; function toast(m){ const t=$("#toast"); t.textContent=m; t.hidden=fa
 
 /* ---------- materials (starting values from the calibration kit; replace with your tested results) ---------- */
 const BUILTIN = [
-  {name:"Walnut plywood 3 mm", cut:[1500,75,1], line:[6000,12], fill:[15000,20], air:1, note:"Starting value inside the walnut test range. Replace with your test result."},
-  {name:"Leather 1 mm (veg-tan)", cut:[3000,40,1], line:[8000,10], fill:[18000,15], air:1, note:"Starting value. Veg-tan only; may trip Flame Detection."},
-  {name:"Opal white extruded acrylic 3 mm", cut:[800,80,1], line:[6000,15], fill:[24000,20], air:1, note:"Starting value; extruded cuts a step faster than AtomStack's 700 mm/min. One pass, low air, sheet on pins. Replace with your test result."},
-  {name:"Clear extruded acrylic 3 mm", cut:[800,80,1], line:[6000,15], fill:[24000,20], air:1, note:"Starting value; extruded cuts a step faster than AtomStack's 700 mm/min. Engraving extruded gives a clear-grey mark, not white frost. Replace with your test result."},
-  {name:"Clear extruded acrylic 6 mm", cut:[300,80,1], line:[6000,15], fill:[24000,20], air:1, note:"Starting value near AtomStack's 6 mm figure. Expect taper; try Start cutting Z step 2 mm in Studio. Replace with your test result."},
-  {name:"Birch / poplar plywood 3 mm", cut:[1500,75,1], line:[6000,12], fill:[15000,20], air:1, note:"Owner report: 1500 mm/min, 75 % with focus at 9.5 mm."},
-  {name:"MDF 5 mm", cut:[500,80,1], line:[6000,12], fill:[15000,20], air:1, note:"AtomStack's value, run with Flame Detection off."},
-  {name:"Custom", cut:[1000,60,1], line:[6000,12], fill:[18000,20], air:1, note:"Enter your own values."},
+  {name:"Walnut plywood 3 mm (calibrated)", cut:[1000,100,1,2], line:[6000,12], fill:[15000,20], air:1, note:"Calibrated on our Hurricane: Bambu Lab walnut ply, 1000 mm/min, 100 %, Start cutting Z step 2 mm."},
+  {name:"Leather 1 mm (veg-tan)", cut:[2000,50,1,0.5], line:[8000,10], fill:[18000,15], air:1, note:"Starting value, scaled from the walnut result. Veg-tan only; may trip Flame Detection."},
+  {name:"Opal white extruded acrylic 3 mm", cut:[600,100,1,1], line:[6000,15], fill:[24000,20], air:1, note:"Starting value, scaled from the walnut result. One pass, low air, sheet on pins."},
+  {name:"Clear extruded acrylic 3 mm", cut:[600,100,1,1], line:[6000,15], fill:[24000,20], air:1, note:"Starting value, scaled from the walnut result. Engraving extruded gives a clear-grey mark, not white frost."},
+  {name:"Clear extruded acrylic 6 mm", cut:[220,100,1,2], line:[6000,15], fill:[24000,20], air:1, note:"Starting value, scaled from the walnut result. Expect taper."},
+  {name:"Birch / poplar plywood 3 mm", cut:[1000,100,1,2], line:[6000,12], fill:[15000,20], air:1, note:"Same as our walnut result (poplar core); not tested on birch."},
+  {name:"MDF 5 mm", cut:[400,100,1,2], line:[6000,12], fill:[15000,20], air:1, note:"AtomStack's 500 mm/min at 80 %, scaled from our walnut result. Run with Flame Detection off and stay at the machine."},
+  {name:"Custom", cut:[1000,60,1,0], line:[6000,12], fill:[18000,20], air:1, note:"Enter your own values."},
 ];
 let presets = []; // from shared store
 function allMaterials(){ return [...presets.map(p=>({...p, saved:true})), ...BUILTIN]; }
@@ -174,13 +175,13 @@ function renderMatSelect(keep){
 function currentMat(){ const v=$("#mat").value; return v[0]==="s" ? presets[+v.slice(1)] : BUILTIN[+v.slice(1)]; }
 function loadMat(){
   const m=currentMat(); if(!m) return;
-  $("#m-cs").value=m.cut[0]; $("#m-cp").value=m.cut[1]; $("#m-pass").value=m.cut[2]||1; $("#m-air").value=String(m.air??1);
+  $("#m-cs").value=m.cut[0]; $("#m-cp").value=m.cut[1]; $("#m-pass").value=m.cut[2]||1; $("#m-cz").value=m.cut[3]||0; $("#m-air").value=String(m.air??1);
   $("#m-line").value=`${m.line[0]} / ${m.line[1]}`; $("#m-fill").value=`${m.fill[0]} / ${m.fill[1]}`;
   $("#matnote").textContent=m.note||"";
   applyMaterialToLayers(); render();
 }
 function pair(s, d){ const m=String(s).match(/([\d.]+)\s*\/\s*([\d.]+)/); return m?[+m[1],+m[2]]:d; }
-function matValues(){ return { cut:[+$("#m-cs").value||1000, +$("#m-cp").value||60, Math.max(1,+$("#m-pass").value|0)],
+function matValues(){ return { cut:[+$("#m-cs").value||1000, +$("#m-cp").value||60, Math.max(1,+$("#m-pass").value|0), Math.max(0,+$("#m-cz").value||0)],
   line:pair($("#m-line").value,[6000,12]), fill:pair($("#m-fill").value,[18000,20]), air:+$("#m-air").value }; }
 
 /* ---------- SVG parsing ---------- */
@@ -312,11 +313,11 @@ function buildLayers(){
 }
 function applyMaterialToLayers(){
   const m=matValues();
-  for(const L of layers){ const v = L.mode==="cut"?m.cut : L.mode==="line"?m.line : L.mode==="fill"?m.fill : null; if(v){ L.speed=v[0]; L.power=v[1]; L.passes=L.mode==="cut"?(m.cut[2]||1):1; } }
+  for(const L of layers){ const v = L.mode==="cut"?m.cut : L.mode==="line"?m.line : L.mode==="fill"?m.fill : null; if(v){ L.speed=v[0]; L.power=v[1]; L.passes=L.mode==="cut"?(m.cut[2]||1):1; L.z=L.mode==="cut"?(m.cut[3]||0):0; } }
 }
 function renderLayers(){
   const tb=$("#layers");
-  if(!layers.length){ tb.innerHTML=`<tr><td colspan="8" class="empty">Load an SVG to see its colours here. Each one becomes a Studio layer.</td></tr>`; return; }
+  if(!layers.length){ tb.innerHTML=`<tr><td colspan="9" class="empty">Load an SVG to see its colours here. Each one becomes a Studio layer.</td></tr>`; return; }
   let li=0; const names=layers.map(L=>L.mode==="skip"?"—":null);
   tb.innerHTML=layers.map((L,i)=>`<tr>
     <td><div class="ord"><button data-up="${i}" aria-label="Move up" ${i===0?"disabled":""}>↑</button><button data-down="${i}" aria-label="Move down" ${i===layers.length-1?"disabled":""}>↓</button></div></td>
@@ -326,10 +327,11 @@ function renderLayers(){
     <td><input type="number" data-k="speed" data-i="${i}" id="spd-${i}" value="${L.speed}" step="10" min="1" ${L.mode==="skip"?"disabled":""}></td>
     <td><input type="number" data-k="power" data-i="${i}" id="pwr-${i}" value="${L.power}" step="1" min="1" max="100" ${L.mode==="skip"?"disabled":""}></td>
     <td><input type="number" data-k="passes" data-i="${i}" id="pas-${i}" value="${L.passes}" step="1" min="1" max="20" ${L.mode==="skip"?"disabled":""}></td>
+    <td><input type="number" data-k="z" data-i="${i}" id="z-${i}" value="${L.z||0}" step="0.5" min="0" max="5" ${L.mode!=="cut"?"disabled":""}></td>
     <td class="mono" id="lname-${i}"></td></tr>`).join("");
 }
 $("#layers").addEventListener("input", e=>{ const i=+e.target.dataset.i, k=e.target.dataset.k; if(isNaN(i)||!k) return;
-  if(k==="mode"){ layers[i].mode=e.target.value; const m=matValues(); const v=layers[i].mode==="cut"?m.cut:layers[i].mode==="line"?m.line:layers[i].mode==="fill"?m.fill:null; if(v){ layers[i].speed=v[0]; layers[i].power=v[1]; layers[i].passes=layers[i].mode==="cut"?(m.cut[2]||1):1; } renderLayers(); }
+  if(k==="mode"){ layers[i].mode=e.target.value; const m=matValues(); const v=layers[i].mode==="cut"?m.cut:layers[i].mode==="line"?m.line:layers[i].mode==="fill"?m.fill:null; if(v){ layers[i].speed=v[0]; layers[i].power=v[1]; layers[i].passes=layers[i].mode==="cut"?(m.cut[2]||1):1; layers[i].z=layers[i].mode==="cut"?(m.cut[3]||0):0; } renderLayers(); }
   else layers[i][k]=+e.target.value;
   render(false); });
 $("#layers").addEventListener("click", e=>{ const u=e.target.closest("[data-up]"), d=e.target.closest("[data-down]");
@@ -362,7 +364,7 @@ function buildAtom(name){
   const P=plan(); if(P.length>20) throw new Error("Studio palette has 20 layers here; this design needs "+P.length+".");
   const lineSpace=0.1;
   const layersOut=P.map(p=>({...LAYER_TEMPLATE, layerName:`C${String(p.idx).padStart(2,"0")}`, layerColor:PALETTE[p.idx], layerId:p.idx, mode:MODE[p.mode],
-    speed:+p.speed, power:+p.power, processNum:Math.max(1,p.passes|0), gasAssisted:p.air?1:2, lineSpace}));
+    speed:+p.speed, power:+p.power, processNum:Math.max(1,p.passes|0), gasAssisted:p.air?1:2, lineSpace, startDown:p.mode==="cut"?(+p.z||0):0}));
   const items=[]; let z=0;
   for(const p of P){
     for(const sh of p.shapes){
@@ -415,7 +417,7 @@ async function loadFile(f){
   buildLayers(); renderLayers(); updateName(); render();
 }
 function reparse(){ if(!window.__svgText) return; const keep=layers.map(L=>({...L})); parsed=parseSVG(window.__svgText, 25.4/+$("#dpi").value, (+$("#scale").value||100)/100);
-  buildLayers(); for(const L of layers){ const k=keep.find(o=>o.color===L.color); if(k) Object.assign(L,{mode:k.mode,speed:k.speed,power:k.power,passes:k.passes}); }
+  buildLayers(); for(const L of layers){ const k=keep.find(o=>o.color===L.color); if(k) Object.assign(L,{mode:k.mode,speed:k.speed,power:k.power,passes:k.passes,z:k.z}); }
   layers.sort((a,b)=>{ const ia=keep.findIndex(o=>o.color===a.color), ib=keep.findIndex(o=>o.color===b.color); return (ia<0?99:ia)-(ib<0?99:ib); });
   renderLayers(); render(); }
 function updateName(){ const m=currentMat(); const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""); $("#outname").value=`${slug(srcName)}-${slug(m?.name||"material")}`; }
@@ -429,7 +431,7 @@ drop.addEventListener("drop",e=>loadFile(e.dataTransfer.files[0]));
 ["#dpi","#scale"].forEach(s=>$(s).addEventListener("change",reparse));
 ["#ox","#oy","#inner"].forEach(s=>$(s).addEventListener("input",()=>{ renderLayers(); render(false); }));
 $("#mat").addEventListener("change",()=>{ loadMat(); renderLayers(); updateName(); render(); try{ localStorage.setItem("s2a-mat",$("#mat").value);}catch{} });
-["#m-cs","#m-cp","#m-pass","#m-air","#m-line","#m-fill"].forEach(s=>$(s).addEventListener("input",()=>{ applyMaterialToLayers(); renderLayers(); render(false); }));
+["#m-cs","#m-cp","#m-pass","#m-cz","#m-air","#m-line","#m-fill"].forEach(s=>$(s).addEventListener("input",()=>{ applyMaterialToLayers(); renderLayers(); render(false); }));
 
 /* ---------- saving: .atom directly, or inside a .zip where the viewer only allows standard types ---------- */
 const CRC=(()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0; } return b=>{ let c=0xFFFFFFFF; for(let i=0;i<b.length;i++) c=t[(c^b[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }; })();
