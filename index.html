@@ -305,8 +305,9 @@ let parsed=null, layers=[], srcName="design";
 const PALETTE={0:"#000000",1:"#0040FF",2:"#FF2020",3:"#00B050",4:"#C8A000",5:"#FF8000",6:"#00B8D0",7:"#E000E0",8:"#661EFE",9:"#D300FC",10:"#FD4E75",11:"#5A9A00",12:"#03776C",13:"#B06000",14:"#2090FF",15:"#A08981",16:"#606060",17:"#9C2A2A",18:"#3C6E9E",19:"#7A7A00"};
 function buildLayers(){
   const byCol=new Map();
-  for(const s of parsed.shapes){ if(!byCol.has(s.color)) byCol.set(s.color,{color:s.color, count:0, filled:0}); const L=byCol.get(s.color); L.count++; if(s.filled) L.filled++; }
-  layers=[...byCol.values()].map(L=>({...L, mode: L.filled===L.count && byCol.size>1 ? "fill" : "cut"}));
+  for(const s of parsed.shapes){ if(!byCol.has(s.color)) byCol.set(s.color,{color:s.color, count:0, filled:0, open:0}); const L=byCol.get(s.color); L.count++; if(s.filled) L.filled++; if(s.subs.every(sp=>!sp.closed)) L.open++; }
+  // all-open strokes (labels, score lines) default to Line; filled-only shapes to Fill; the rest Cut
+  layers=[...byCol.values()].map(L=>({...L, mode: L.open===L.count ? "line" : (L.filled===L.count && byCol.size>1 ? "fill" : "cut")}));
   applyMaterialToLayers();
 }
 function applyMaterialToLayers(){
