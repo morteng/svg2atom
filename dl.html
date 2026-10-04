@@ -21,7 +21,7 @@ code { font-family:"IBM Plex Mono",Menlo,monospace; color:var(--ink); }
   <h1 id="h">Preparing download…</h1>
   <p id="p"></p>
   <p><a class="btn" id="a" href="#" hidden>Download again</a></p>
-  <p>Open the file in AtomStack Studio, check sizes and layer settings, run "Frame", then start. You can close this tab.</p>
+  <p>Open the file in AtomStack Studio, check sizes and layer settings, run "Frame", then start. You can close this tab. <a href="files.html">All files</a></p>
 </div></main>
 <script>
 // ?f=<name>.atom  -> serves files/<name>.atom
@@ -37,9 +37,9 @@ code { font-family:"IBM Plex Mono",Menlo,monospace; color:var(--ink); }
       blob = new Blob([Uint8Array.from(bin, c => c.charCodeAt(0))], { type: "application/octet-stream" });
     } else {
       const f = (q.get("f") || "").replace(/[^\w.-]+/g, "");
-      if (!/\.atom$/.test(f)) throw new Error("No file named in the link.");
+      if (!/\.(atom|svg|png)$/.test(f)) throw new Error("No file named in the link.");
       const r = await fetch("files/" + f); if (!r.ok) throw new Error("File not found: " + f);
-      name = f; blob = new Blob([await r.arrayBuffer()], { type: "application/octet-stream" });
+      name = f; blob = new Blob([await r.arrayBuffer()], { type: f.endsWith(".png") ? "image/png" : f.endsWith(".svg") ? "image/svg+xml" : "application/octet-stream" });
     }
   } catch (e) { document.getElementById("h").textContent = "Couldn't prepare the file"; document.getElementById("p").textContent = e.message; return; }
   const a = document.getElementById("a"); a.href = URL.createObjectURL(blob); a.download = name; a.hidden = false;
