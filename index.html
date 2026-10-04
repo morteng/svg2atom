@@ -157,7 +157,7 @@ let toastT; function toast(m){ const t=$("#toast"); t.textContent=m; t.hidden=fa
 const BUILTIN = [
   {name:"Walnut plywood 3 mm (calibrated)", cut:[1000,100,1,2], line:[6000,12], fill:[15000,20], air:1, note:"Calibrated on our Hurricane: Bambu Lab walnut ply, 1000 mm/min, 100 %, Start cutting Z step 2 mm."},
   {name:"Leather 1 mm (veg-tan)", cut:[2000,50,1,2], line:[8000,10], fill:[18000,15], air:1, note:"Starting value, scaled from the walnut result. Veg-tan only; may trip Flame Detection."},
-  {name:"Opal white extruded acrylic 3 mm", cut:[850,100,2,2,1], line:[6000,15], fill:[24000,20], air:1, note:"Best so far (round 2): 2 passes at 800–900 mm/min, Start Z 2, Z step 1 per pass, less corner warping. Round 4 (3–4 faster passes) pending. Air high, sheet on pins."},
+  {name:"Opal white extruded acrylic 3 mm", cut:[1800,100,4,1,1], line:[6000,15], fill:[24000,20], air:1, note:"Least bad so far (round 4): 4 passes at 1800 mm/min, Start Z 1, Z step 1 per pass, still some warping. Round 5 (cooling between passes, rounded corners) pending. Round sharp corners on real parts; air high, sheet on pins."},
   {name:"Clear extruded acrylic 3 mm", cut:[850,100,2,2,1], line:[6000,15], fill:[24000,20], air:1, note:"Starting value from the opal tests: 2 passes, Start Z 2, Z step 1. Engraving extruded gives a clear-grey mark, not white frost."},
   {name:"Clear extruded acrylic 6 mm", cut:[220,100,1,3], line:[6000,15], fill:[24000,20], air:1, note:"Starting value, scaled from the walnut result, focus 3 mm down. Expect taper."},
   {name:"Birch / poplar plywood 3 mm", cut:[1000,100,1,2], line:[6000,12], fill:[15000,20], air:1, note:"Same as our walnut result (poplar core); not tested on birch."},
