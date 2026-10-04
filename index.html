@@ -153,17 +153,20 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 let toastT; function toast(m){ const t=$("#toast"); t.textContent=m; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2800); }
 
-/* ---------- materials (starting values from the calibration kit; replace with your tested results) ---------- */
+/* ---------- materials: loaded from materials.json (generated from knowledge/ by tools/build.py); the BUILTIN block
+   below is the same data, written by tools/build.py, used when materials.json can't be fetched (file://, offline, claude.ai) ---------- */
+/*BUILTIN:start*/
 const BUILTIN = [
-  {name:"Walnut plywood 3 mm (calibrated)", cut:[1000,100,1,2], line:[6000,12], fill:[15000,20], air:1, note:"Calibrated on our Hurricane: Bambu Lab walnut ply, 1000 mm/min, 100 %, Start cutting Z step 2 mm."},
-  {name:"Leather 1 mm (veg-tan)", cut:[2000,50,1,2], line:[8000,10], fill:[18000,15], air:1, note:"Starting value, scaled from the walnut result. Veg-tan only; may trip Flame Detection."},
-  {name:"Opal white extruded acrylic 3 mm", cut:[1200,85,4,0,0], line:[6000,15], fill:[24000,20], air:1, note:"Best so far (round 8): 4 passes at 1200 mm/min, 85 %, Z 0-0-1-1. The app gives one Z for all passes (0 here); for 0-0-1-1 use one layer per pass, which also lets parts cool between passes. Air high, sheet on pins, round sharp corners."},
-  {name:"Clear extruded acrylic 3 mm", cut:[850,100,2,2,1], line:[6000,15], fill:[24000,20], air:1, note:"Starting value from the opal tests: 2 passes, Start Z 2, Z step 1. Engraving extruded gives a clear-grey mark, not white frost."},
-  {name:"Clear extruded acrylic 6 mm", cut:[220,100,1,3], line:[6000,15], fill:[24000,20], air:1, note:"Starting value, scaled from the walnut result, focus 3 mm down. Expect taper."},
-  {name:"Birch / poplar plywood 3 mm", cut:[1000,100,1,2], line:[6000,12], fill:[15000,20], air:1, note:"Same as our walnut result (poplar core); not tested on birch."},
-  {name:"MDF 5 mm", cut:[400,100,1,2], line:[6000,12], fill:[15000,20], air:1, note:"AtomStack's 500 mm/min at 80 %, scaled from our walnut result. Run with Flame Detection off and stay at the machine."},
-  {name:"Custom", cut:[1000,60,1,0], line:[6000,12], fill:[18000,20], air:1, note:"Enter your own values."},
+  {name:"Walnut plywood 3 mm (calibrated)", cut:[1000, 100, 1, 2, 0], line:[6000, 12], fill:[15000, 20], air:1, note:"Calibrated on our Hurricane: Bambu Lab walnut ply, 1000 mm/min, 100 %, Start cutting Z step 2 mm."},
+  {name:"Leather 1 mm (veg-tan)", cut:[2000, 50, 1, 2, 0], line:[8000, 10], fill:[18000, 15], air:1, note:"Starting value, scaled from the walnut result. Veg-tan only; may trip Flame Detection."},
+  {name:"Opal white extruded acrylic 3 mm", cut:[1200, 85, 4, 0, 0], line:[6000, 15], fill:[24000, 20], air:1, note:"Best so far (round 8): 4 passes at 1200 mm/min, 85 %, Z 0-0-1-1. The app gives one Z for all passes (0 here); for 0-0-1-1 use one layer per pass, which also lets parts cool between passes. Air high, sheet on pins, round sharp corners."},
+  {name:"Clear extruded acrylic 3 mm", cut:[850, 100, 2, 2, 1], line:[6000, 15], fill:[24000, 20], air:1, note:"Starting value from the opal tests: 2 passes, Start Z 2, Z step 1. Engraving extruded gives a clear-grey mark, not white frost."},
+  {name:"Clear extruded acrylic 6 mm", cut:[220, 100, 1, 3, 0], line:[6000, 15], fill:[24000, 20], air:1, note:"Starting value, scaled from the walnut result, focus 3 mm down. Expect taper."},
+  {name:"Birch / poplar plywood 3 mm", cut:[1000, 100, 1, 2, 0], line:[6000, 12], fill:[15000, 20], air:1, note:"Same as our walnut result (poplar core); not tested on birch."},
+  {name:"MDF 5 mm", cut:[400, 100, 1, 2, 0], line:[6000, 12], fill:[15000, 20], air:1, note:"AtomStack's 500 mm/min at 80 %, scaled from our walnut result. Run with Flame Detection off and stay at the machine."},
+  {name:"Custom", cut:[1000, 60, 1, 0], line:[6000, 12], fill:[18000, 20], air:1, note:"Enter your own values."},
 ];
+/*BUILTIN:end*/
 let presets = []; // from shared store
 function allMaterials(){ return [...presets.map(p=>({...p, saved:true})), ...BUILTIN]; }
 function renderMatSelect(keep){
@@ -469,8 +472,24 @@ $("#savePreset").addEventListener("click", async ()=>{
 });
 
 /* ---------- boot ---------- */
-renderMatSelect(); try{ const v=localStorage.getItem("s2a-mat"); if(v && [...$("#mat").options].some(o=>o.value===v)) $("#mat").value=v; }catch{}
+function restoreMat(){ try{ const v=localStorage.getItem("s2a-mat"); if(v && [...$("#mat").options].some(o=>o.value===v)) $("#mat").value=v; }catch{} }
+renderMatSelect(); restoreMat();
 loadMat(); render();
+let matTouched=false;
+["#m-cs","#m-cp","#m-pass","#m-cz","#m-zs","#m-air","#m-line","#m-fill"].forEach(s=>$(s).addEventListener("input",()=>{ matTouched=true; }));
+(async()=>{ // newer material list from the site, if reachable; otherwise keep BUILTIN
+  try{
+    const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),4000);
+    const r=await fetch("materials.json",{cache:"no-cache",signal:ctl.signal}); clearTimeout(t);
+    if(!r.ok) return;
+    const j=await r.json(); const list=Array.isArray(j)?j:j?.presets;
+    if(!Array.isArray(list)) return;
+    const ok=list.filter(p=>p&&typeof p.name==="string"&&Array.isArray(p.cut)&&p.cut.length>=2&&Array.isArray(p.line)&&Array.isArray(p.fill));
+    if(!ok.length) return;
+    const keep=$("#mat").value; BUILTIN.splice(0,BUILTIN.length,...ok); renderMatSelect(keep);
+    if(!matTouched && !layers.length) loadMat();
+  }catch{}
+})();
 (async()=>{
   if(!window.claude?.use) { $("#presetStatus").textContent="Local copy: presets aren't shared."; return; }
   const [db,user,dl]=await Promise.all([claude.use("db"),claude.use("user"),claude.use("downloads")].map(p=>p.catch(()=>null)));
