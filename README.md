@@ -2,7 +2,7 @@
 
 Browser tool that converts an SVG into an AtomStack Studio `.atom` project for the AtomStack Hurricane 55 W CO₂ laser, with speed, power, passes and air assist set per layer (one layer per stroke colour).
 
-**Moved (2026-10-05): this tool now lives in the Hurricane laser app at https://laser.gulden.no/. This site only redirects there and still hosts the test files.**
+**Moved (2026-10-05): this tool now lives in the Hurricane laser app at https://laser.gulden.no/. This site only redirects there; the test files are at https://laser.gulden.no/files/.**
 
 Old address: https://morteng.github.io/svg2atom/
 
